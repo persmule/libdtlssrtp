@@ -290,6 +290,9 @@ srtp_key_material* srtp_get_key_material(dtls_sess* sess)
     key_material_free(km);
     return NULL;
   }
+
+  km->ispassive = sess->state;
+  
   return km;
 }
 
