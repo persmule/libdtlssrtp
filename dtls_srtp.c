@@ -1,22 +1,12 @@
 #include "dtls_srtp.h"
 
-int dtls_init_openssl(void)
-{
-  OpenSSL_add_ssl_algorithms();
-  SSL_load_error_strings();
-  return SSL_library_init();
-}
 
-
-void dtls_uninit_openssl(void)
-{
-  ERR_free_strings();
-  EVP_cleanup();
-}
 
 SSL_VERIFY_CB(dtls_trivial_verify_callback)
 {
   //TODO: add actuall verify routines here, if needed.
+  (void)preverify_ok;
+  (void)ctx;
   return 1;
 }
 
@@ -213,7 +203,7 @@ ptrdiff_t dtls_sess_put_packet(
     SSL_set_accept_state(sess->ssl);
   }
 
-  dtls_sess_send_pending(sess, fd, dest_addr, len);
+  dtls_sess_send_pending(sess, fd, dest_addr, addrlen);
 
   BIO_write(rbio, buf, len);
   ret = SSL_read(sess->ssl, dummy, len);
@@ -222,7 +212,7 @@ ptrdiff_t dtls_sess_put_packet(
     return ret;
   }
 
-  dtls_sess_send_pending(sess, fd, dest_addr, len);
+  dtls_sess_send_pending(sess, fd, dest_addr, addrlen);
 
   if(SSL_is_init_finished(sess->ssl)){
     sess->type = DTLS_CONTYPE_EXISTING;
@@ -239,6 +229,14 @@ ptrdiff_t dtls_do_handshake(
 			    socklen_t addrlen
 			    )
 {
+  /* If we are not acting as a client connecting to the remote side then
+   * don't start the handshake as it will accomplish nothing and would conflict
+   * with the handshake we receive from the remote side.
+   */
+  if(sess->ssl == NULL
+     || dtls_sess_get_state(sess) != DTLS_CONSTATE_ACT){
+    return 0;
+  }
   SSL_do_handshake(sess->ssl);
   pthread_mutex_lock(&sess->lock);
   ptrdiff_t ret = dtls_sess_send_pending(sess, fd, dest_addr, addrlen);

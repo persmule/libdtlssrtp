@@ -1,5 +1,6 @@
 #ifndef DTLS_SRTP_H
 #define DTLS_SRTP_H
+
 #include <openssl/bio.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -17,6 +18,10 @@
 
 //for srtp
 #include <srtp/srtp.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum dtls_verify_mode {
   DTLS_VERIFY_NONE = 0,               /*!< Don't verify anything */
@@ -71,6 +76,9 @@ typedef struct dtls_sess {
 
 //type for filedes.
 typedef int fd_t;
+
+//check whether socket is for udp.
+int check_socket(fd_t socket);
 
 void dtls_sess_setup(dtls_sess* sess);
 dtls_sess* dtls_sess_new(SSL_CTX* sslcfg, bool is_passive);
@@ -132,7 +140,7 @@ static inline X509* dtls_sess_get_pear_certificate(dtls_sess* sess)
 {return SSL_get_peer_certificate(sess->ssl);}
 
 static inline bool packet_is_dtls(const void* buf, size_t dummy_len)
-{return (*(const char*)buf >= 20) || (*(const char*)buf <= 63);}
+{(void)dummy_len;return (*(const char*)buf >= 20) || (*(const char*)buf <= 63);}
 
 static inline void dtls_sess_set_state(dtls_sess* sess, enum dtls_con_state state)
 {sess->state = state;}
@@ -185,17 +193,28 @@ static inline void srtp_key_material_extract
 static inline bool str_isempty(const char* str)
 {return ((str == NULL) || (str[0] == '\0'));}
 
-static const char* str_nullforempty(const char* str)
+static inline const char* str_nullforempty(const char* str)
 {return (str_isempty(str)?NULL:str);}
 
 //init and uninit openssl library.
-int dtls_init_openssl(void);
+static inline int dtls_init_openssl(void)
+{
+  OpenSSL_add_ssl_algorithms();
+  SSL_load_error_strings();
+  return SSL_library_init();
+}
 
-void dtls_uninit_openssl(void);
 
-//check whether socket is for udp.
-int check_socket(fd_t socket);
+static inline void dtls_uninit_openssl(void)
+{
+  ERR_free_strings();
+  EVP_cleanup();
+}
 
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
