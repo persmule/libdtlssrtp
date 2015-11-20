@@ -376,7 +376,9 @@ int main(int argc, char** argv)
 	BIO_free(fb);
 	break;
       }
-      BIO_read_filename(fb, pkeyfile);
+      fprintfinger(stdout, cfg.cert);
+      BIO_free(fb);
+      fb = BIO_new_file(pkeyfile, "rb");
       if(NULL == (cfg.pkey = PEM_read_bio_PrivateKey(fb, NULL, NULL, NULL))){
 	fputs("Fail to parse private key file!\n", stderr);
 	BIO_free(fb);

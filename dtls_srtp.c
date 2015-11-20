@@ -129,11 +129,17 @@ dtls_sess* dtls_sess_new(SSL_CTX* sslcfg, bool is_passive)
 
   SSL_set_bio(sess->ssl, rbio, wbio);
   
-  BIO_free(rbio);
-  BIO_free(wbio);
+  /*SSL_set_bio does not change ref count of BIOs to set!!!
+    BIO_free(rbio);
+    BIO_free(wbio);*/
 
-  dtls_sess_setup(sess);
-
+  if (sess->state == DTLS_CONSTATE_PASS) {
+    SSL_set_accept_state(sess->ssl);
+  } else {
+    SSL_set_connect_state(sess->ssl);
+  }
+  sess->type = DTLS_CONTYPE_NEW;
+  
   return sess;
   
  error:

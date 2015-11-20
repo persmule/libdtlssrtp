@@ -1,5 +1,5 @@
 PCH = dtls_srtp.h
-CFLAGS = -Wall -Wextra -fPIC -fpic -fpie
+CFLAGS = -Wall -Wextra -fPIC -fpic -fpie -g
 LIBS = -lcrypto -lssl
 TGLIB = libdtlssrtp.a
 TEST = dtlssrtp_example
