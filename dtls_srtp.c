@@ -140,6 +140,7 @@ dtls_sess* dtls_sess_new(SSL_CTX* sslcfg, bool is_passive)
   }
   sess->type = DTLS_CONTYPE_NEW;
   
+  pthread_mutex_init(&sess->lock, NULL);
   return sess;
   
  error:
