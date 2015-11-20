@@ -76,7 +76,7 @@ int fprintkeymat(FILE* fp, const srtp_key_ptrs* ptrs)
     + fputs("********\n", fp);
 }
 
-int fprintfinger(FILE* fp, const X509* cert)
+int fprintfinger(FILE* fp, const char* prefix, const X509* cert)
 {
   unsigned char fingerprint[EVP_MAX_MD_SIZE];
   unsigned int size = sizeof(fingerprint);
@@ -86,7 +86,7 @@ int fprintfinger(FILE* fp, const X509* cert)
     fprintf(stderr, "Failed to generated fingerprint from X509 object %p\n", cert);
     return 0;
   }
-  return fprinthex(fp, "Fingerprint of peer's cert is ", fingerprint, size);
+  return fprinthex(fp, prefix, fingerprint, size);
 }
 
 int handle_socket_error(void) {
@@ -218,7 +218,7 @@ fd_t prepare_udp_socket(const uaddr* addr)
   return fd;
 }
 
-void mainloop(
+int mainloop(
 	     fd_t fd,
 	     SSL_CTX* cfg,
 	     const struct timeval* timeout,
@@ -226,6 +226,7 @@ void mainloop(
 	     const uaddr* peer
 	     )
 {
+  int ret = EXIT_FAILURE;
   //the side without a valid peer is considered the passive side.
   dtls_sess* dtls = dtls_sess_new(cfg, (peer == NULL));
   
@@ -260,8 +261,8 @@ void mainloop(
 	//packet received error!
 	break;
       }
-      if(packet_is_dtls(payload, sizeof(payload))){
-	len = dtls_sess_put_packet(dtls, fd, payload, sizeof(payload), (const struct sockaddr*)&l_peer, l_peerlen);
+      if(packet_is_dtls(payload, len)){
+	len = dtls_sess_put_packet(dtls, fd, payload, len, (const struct sockaddr*)&l_peer, l_peerlen);
 	if((len < 0) && SSL_get_error(dtls->ssl, len) == SSL_ERROR_SSL){
 	  fprintf(stderr, "DTLS failure occurred on dtls session %p due to reason '%s'\n", dtls, ERR_reason_error_string(ERR_get_error()));
 	  break;
@@ -274,7 +275,7 @@ void mainloop(
 	      fprintf(stderr, "No certificate was provided by the peer on dtls session %p\n", dtls);
 	      break;
 	    }
-	    fprintfinger(stdout, peercert);
+	    fprintfinger(stdout, "Fingerprint of peer's cert is ", peercert);
 	    X509_free(peercert);
 	  }
 	  srtp_key_material* km = srtp_get_key_material(dtls);
@@ -291,6 +292,7 @@ void mainloop(
 	    dtls_sess_setup(dtls);
 	    continue;
 	  }else{
+	    ret = EXIT_SUCCESS;
 	    break;
 	  }
 	}
@@ -304,6 +306,7 @@ void mainloop(
     }
   }
   dtls_sess_free(dtls);
+  return ret;
 }
 
 int main(int argc, char** argv)
@@ -376,7 +379,7 @@ int main(int argc, char** argv)
 	BIO_free(fb);
 	break;
       }
-      fprintfinger(stdout, cfg.cert);
+      fprintfinger(stdout, "Fingerprint of local cert is ", cfg.cert);
       BIO_free(fb);
       fb = BIO_new_file(pkeyfile, "rb");
       if(NULL == (cfg.pkey = PEM_read_bio_PrivateKey(fb, NULL, NULL, NULL))){
@@ -385,7 +388,7 @@ int main(int argc, char** argv)
 	break;
       }
       BIO_free(fb);
-      sslcfg = dtls_ctx_init(DTLS_VERIFY_NONE, NULL, &cfg);
+      sslcfg = dtls_ctx_init(DTLS_VERIFY_FINGERPRINT, NULL, &cfg);
       if(sslcfg == NULL){
 	fputs("Fail to generate SSL_CTX!\n", stderr);
 	break;
@@ -407,8 +410,7 @@ int main(int argc, char** argv)
       }
       fd_t fd = prepare_udp_socket(&laddr);
       do{
-	mainloop(fd, sslcfg, &timeout, &exitflag, server?NULL:&raddr);
-	ret = EXIT_SUCCESS; 
+	ret = mainloop(fd, sslcfg, &timeout, &exitflag, server?NULL:&raddr);
       }while(0);
       close(fd);
     }while(0);

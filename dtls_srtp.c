@@ -214,7 +214,7 @@ ptrdiff_t dtls_sess_put_packet(
   BIO_write(rbio, buf, len);
   ret = SSL_read(sess->ssl, dummy, len);
 
-  if(ret < 0){
+  if((ret < 0) && SSL_get_error(sess->ssl, ret) == SSL_ERROR_SSL){
     return ret;
   }
 
