@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "dtls_srtp.h"
+#include "dsink_udp.h"
 
 
 #define RTP_PACKET_LEN 8192
@@ -228,10 +229,10 @@ int mainloop(
 {
   int ret = EXIT_FAILURE;
   //the side without a valid peer is considered the passive side.
-  dtls_sess* dtls = dtls_sess_new(cfg, (peer == NULL));
+  dtls_sess* dtls = dtls_sess_new(cfg, dsink_udp_getsink(), (peer == NULL));
   
 
-  dtls_do_handshake(dtls, fd, (const struct sockaddr*)peer, getsocklen(peer));
+  dtls_do_handshake(dtls, (void*)fd, (const void*)peer, getsocklen(peer));
   
   uint8_t payload[RTP_PACKET_LEN];
   while(*toexit == false){
@@ -262,7 +263,7 @@ int mainloop(
 	break;
       }
       if(packet_is_dtls(payload, len)){
-	len = dtls_sess_put_packet(dtls, fd, payload, len, (const struct sockaddr*)&l_peer, l_peerlen);
+	len = dtls_sess_put_packet(dtls, (void*)fd, payload, len, (const void*)&l_peer, l_peerlen);
 	if((len < 0) && SSL_get_error(dtls->ssl, len) == SSL_ERROR_SSL){
 	  fprintf(stderr, "DTLS failure occurred on dtls session %p due to reason '%s'\n", dtls, ERR_reason_error_string(ERR_get_error()));
 	  break;

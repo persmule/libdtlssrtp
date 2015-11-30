@@ -5,10 +5,8 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-// for sockets
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
+// for data_sink
+#include "data_sink.h"
 
 #include <assert.h>
 #include <stdbool.h>
@@ -69,51 +67,51 @@ SSL_CTX* dtls_ctx_init(
 
 typedef struct dtls_sess {
   SSL* ssl;
+  const dsink* sink;
   enum dtls_con_state state;
   enum dtls_con_type type;
   pthread_mutex_t lock;
 }dtls_sess;
 
-//type for filedes.
-typedef int fd_t;
-
-//check whether socket is for udp.
-int check_socket(fd_t socket);
-
 void dtls_sess_setup(dtls_sess* sess);
-dtls_sess* dtls_sess_new(SSL_CTX* sslcfg, bool is_passive);
+
+dtls_sess* dtls_sess_new(
+			 SSL_CTX* sslcfg,
+			 const dsink* sink,
+			 bool is_passive
+			 );
 
 void dtls_sess_free(dtls_sess* sess);
 
 ptrdiff_t dtls_sess_send_pending(
 				 dtls_sess* sess,
-				 fd_t fd,
-				 const struct sockaddr *dest_addr,
-				 socklen_t addrlen
+				 void* carrier,
+				 const void* dest,
+				 int destlen
 				 );
 
 ptrdiff_t dtls_sess_put_packet(
 			       dtls_sess* sess,
-			       fd_t fd,
+			       void* carrier,
 			       const void* buf,
 			       size_t len,
-			       const struct sockaddr *dest_addr,
-			       socklen_t addrlen
+			       const void* dest,
+			       int destlen
 			       );
 
 ptrdiff_t dtls_do_handshake(
 			    dtls_sess* sess,
-			    fd_t fd,
-			    const struct sockaddr *dest_addr,
-			    socklen_t addrlen
+			    void* carrier,
+			    const void* dest,
+			    int destlen
 			    );
 
 //return timeout time as millisec.
 long dtls_sess_handle_timeout(
 			      dtls_sess* sess,
-			      fd_t fd,
-			      const struct sockaddr *dest_addr,
-			      socklen_t addrlen
+			      void* carrier,
+			      const void* dest,
+			      int destlen
 			      );
 
 static inline void dtls_sess_reset(dtls_sess* sess)
@@ -124,16 +122,22 @@ static inline void dtls_sess_reset(dtls_sess* sess)
   }
 }
 
+static inline const dsink* dtls_sess_get_sink(const dtls_sess* sess)
+{return sess->sink;}
+
+static inline void dtls_sess_set_sink(dtls_sess* sess, const dsink* sink)
+{sess->sink = sink;}
+
 static inline void dtls_sess_renegotiate(
 					 dtls_sess* sess,
-					 fd_t fd,
-					 const struct sockaddr *dest_addr,
-					 socklen_t addrlen
+					 void* carrier,
+					 const void* dest,
+					 int destlen
 					 )
 {
   SSL_renegotiate(sess->ssl);
   SSL_do_handshake(sess->ssl);
-  dtls_sess_send_pending(sess, fd, dest_addr, addrlen);
+  dtls_sess_send_pending(sess, carrier, dest, destlen);
 }
 
 static inline X509* dtls_sess_get_pear_certificate(dtls_sess* sess)

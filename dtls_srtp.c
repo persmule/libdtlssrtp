@@ -10,24 +10,6 @@ SSL_VERIFY_CB(dtls_trivial_verify_callback)
   return 1;
 }
 
-int check_socket(fd_t socket)
-{
-  int socktype = 0;
-  socklen_t optlen = sizeof(socktype);
-  if(0 != getsockopt(socket, SOL_SOCKET, SO_TYPE, &socktype, &optlen)){
-    switch(errno){
-      //TODO: add more accurate error-parsing process.
-    default:
-      return false;
-    }
-  }
-  if(socktype != SOCK_DGRAM){
-    //socket is not for udp.
-    return false;
-  }
-  return true;
-}
-
 SSL_CTX* dtls_ctx_init(
 		       int verify_mode,
 		       ssl_verify_cb* cb,
@@ -101,7 +83,11 @@ SSL_CTX* dtls_ctx_init(
   return ctx;
 }
 
-dtls_sess* dtls_sess_new(SSL_CTX* sslcfg, bool is_passive)
+dtls_sess* dtls_sess_new(
+			 SSL_CTX* sslcfg,
+			 const dsink* sink,
+			 bool is_passive
+			 )
 {
   dtls_sess* sess = (dtls_sess*)calloc(1, sizeof(dtls_sess));
   BIO* rbio = NULL;
@@ -141,6 +127,7 @@ dtls_sess* dtls_sess_new(SSL_CTX* sslcfg, bool is_passive)
   sess->type = DTLS_CONTYPE_NEW;
   
   pthread_mutex_init(&sess->lock, NULL);
+  dtls_sess_set_sink(sess, sink);
   return sess;
   
  error:
@@ -164,9 +151,9 @@ void dtls_sess_free(dtls_sess* sess)
 
 ptrdiff_t dtls_sess_send_pending(
 				 dtls_sess* sess,
-				 fd_t fd,
-				 const struct sockaddr *dest_addr,
-				 socklen_t addrlen
+				 void* carrier,
+				 const void* dest,
+				 int destlen
 				 )
 {
   if(sess->ssl == NULL){
@@ -179,18 +166,18 @@ ptrdiff_t dtls_sess_send_pending(
   if(pending > 0) {
     char outgoing[pending];
     out = BIO_read(wbio, outgoing, pending);
-    ret = sendto(fd, outgoing, out, 0, dest_addr, addrlen);
+    ret = sess->sink->sendto(carrier, outgoing, out, 0, dest, destlen);
   }
   return ret;
 }
 
 ptrdiff_t dtls_sess_put_packet(
 			       dtls_sess* sess,
-			       fd_t fd,
+			       void* carrier,
 			       const void* buf,
 			       size_t len,
-			       const struct sockaddr *dest_addr,
-			       socklen_t addrlen
+			       const void* dest,
+			       int destlen
 			       )
 {
   ptrdiff_t ret = 0;
@@ -210,7 +197,7 @@ ptrdiff_t dtls_sess_put_packet(
     SSL_set_accept_state(sess->ssl);
   }
 
-  dtls_sess_send_pending(sess, fd, dest_addr, addrlen);
+  dtls_sess_send_pending(sess, carrier, dest, destlen);
 
   BIO_write(rbio, buf, len);
   ret = SSL_read(sess->ssl, dummy, len);
@@ -219,7 +206,7 @@ ptrdiff_t dtls_sess_put_packet(
     return ret;
   }
 
-  dtls_sess_send_pending(sess, fd, dest_addr, addrlen);
+  dtls_sess_send_pending(sess, carrier, dest, destlen);
 
   if(SSL_is_init_finished(sess->ssl)){
     sess->type = DTLS_CONTYPE_EXISTING;
@@ -231,9 +218,9 @@ ptrdiff_t dtls_sess_put_packet(
 
 ptrdiff_t dtls_do_handshake(
 			    dtls_sess* sess,
-			    fd_t fd,
-			    const struct sockaddr *dest_addr,
-			    socklen_t addrlen
+			    void* carrier,
+			    const void* dest,
+			    int destlen
 			    )
 {
   /* If we are not acting as a client connecting to the remote side then
@@ -246,21 +233,21 @@ ptrdiff_t dtls_do_handshake(
   }
   SSL_do_handshake(sess->ssl);
   pthread_mutex_lock(&sess->lock);
-  ptrdiff_t ret = dtls_sess_send_pending(sess, fd, dest_addr, addrlen);
+  ptrdiff_t ret = dtls_sess_send_pending(sess, carrier, dest, destlen);
   pthread_mutex_unlock(&sess->lock);
   return ret;
 }
 
 long dtls_sess_handle_timeout(
 			      dtls_sess* sess,
-			      fd_t fd,
-			      const struct sockaddr *dest_addr,
-			      socklen_t addrlen
+			      void* carrier,
+			      const void* dest,
+			      int destlen
 			      )
 {
   struct timeval timeout;
   DTLSv1_handle_timeout(sess->ssl);
-  dtls_sess_send_pending(sess, fd, dest_addr, addrlen);
+  dtls_sess_send_pending(sess, carrier, dest, destlen);
   if(!DTLSv1_get_timeout(sess->ssl, &timeout)) {
     return 0;
   }

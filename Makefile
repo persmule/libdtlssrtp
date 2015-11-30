@@ -1,5 +1,5 @@
 PCH = dtls_srtp.h
-CFLAGS = -Wall -Wextra -fPIC -fpic -fpie -g
+CFLAGS = -Wall -Wextra -fPIC -fpic -fpie -O3
 LIBS = -lcrypto -lssl
 TGLIB = libdtlssrtp.a
 TEST = dtlssrtp_example
@@ -9,7 +9,7 @@ all: $(TGLIB)
 
 test: $(TEST)
 
-$(TEST): example.o $(TGLIB)
+$(TEST): example.o dsink_udp.o $(TGLIB)
 	gcc -o $(TEST) $^ $(LIBS)
 
 $(TGLIB): dtls_srtp.o
