@@ -1,5 +1,9 @@
 PCH = dtls_srtp.h
+RANLIB = ranlib
 CFLAGS = -Wall -Wextra -fPIC -fpic -fpie -O3
+INCLUDE =
+SYSROOT =
+LIBPATH =
 LIBS = -lcrypto -lssl
 TGLIB = libdtlssrtp.a
 TEST = dtlssrtp_example
@@ -10,17 +14,17 @@ all: $(TGLIB)
 test: $(TEST)
 
 $(TEST): example.o dsink_udp.o $(TGLIB)
-	gcc -o $(TEST) $^ $(LIBS)
+	$(CC) -o $(TEST) $^ $(LIBPATH) $(LIBS)
 
 $(TGLIB): dtls_srtp.o
-	ar cr $@ $^
-	ranlib $@
+	$(AR) cr $@ $^
+	$(RANLIB) $@
 
 %.o: %.c $(PCH).gch
-	gcc $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(INCLUDE) $(SYSROOT) -c -o $@ $<
 
 $(PCH).gch: $(PCH)
-	gcc $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) $(INCLUDE) $(SYSROOT) -o $@ $<
 
 clean:
 	-rm *.o $(TGLIB) $(TEST)
