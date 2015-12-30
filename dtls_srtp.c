@@ -86,14 +86,14 @@ SSL_CTX* dtls_ctx_init(
 dtls_sess* dtls_sess_new(
 			 SSL_CTX* sslcfg,
 			 const dsink* sink,
-			 bool is_passive
+			 int con_state
 			 )
 {
   dtls_sess* sess = (dtls_sess*)calloc(1, sizeof(dtls_sess));
   BIO* rbio = NULL;
   BIO* wbio = NULL;
 
-  sess->state = is_passive;
+  sess->state = con_state;
   
   if (NULL == (sess->ssl = SSL_new(sslcfg))) {
     goto error;

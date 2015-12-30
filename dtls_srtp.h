@@ -78,7 +78,7 @@ void dtls_sess_setup(dtls_sess* sess);
 dtls_sess* dtls_sess_new(
 			 SSL_CTX* sslcfg,
 			 const dsink* sink,
-			 bool is_passive
+			 int con_state
 			 );
 
 void dtls_sess_free(dtls_sess* sess);
