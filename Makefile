@@ -1,6 +1,6 @@
 PCH = dtls_srtp.h
 RANLIB = ranlib
-CFLAGS = -Wall -Wextra -fPIC -fpic -fpie -O3
+CFLAGS = -Wall -Wextra -fPIC -fpic -O3
 INCLUDE =
 SYSROOT =
 LIBPATH =
