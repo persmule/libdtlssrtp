@@ -8,6 +8,7 @@
 // for data_sink
 #include "data_sink.h"
 
+
 #include <assert.h>
 #include <stdbool.h>
 
@@ -106,13 +107,21 @@ ptrdiff_t dtls_do_handshake(
 			    int destlen
 			    );
 
-//return timeout time as millisec.
-long dtls_sess_handle_timeout(
-			      dtls_sess* sess,
-			      void* carrier,
-			      const void* dest,
-			      int destlen
-			      );
+//Supposed to be used by carrier with timer to handle timeout.
+ptrdiff_t dtls_sess_handle_timeout(
+				   dtls_sess* sess,
+				   void* carrier,
+				   const void* dest,
+				   int destlen
+				   );
+
+static inline int dtls_sess_get_timeout(
+					const dtls_sess* sess,
+					struct timeval* tv
+					)
+{
+  return DTLSv1_get_timeout(sess->ssl, tv);
+}
 
 static inline void dtls_sess_reset(dtls_sess* sess)
 {
@@ -144,7 +153,7 @@ static inline X509* dtls_sess_get_pear_certificate(dtls_sess* sess)
 {return SSL_get_peer_certificate(sess->ssl);}
 
 static inline bool packet_is_dtls(const void* buf, size_t dummy_len)
-{(void)dummy_len;return (*(const char*)buf >= 20) || (*(const char*)buf <= 63);}
+{(void)dummy_len;return (*(const char*)buf >= 20) && (*(const char*)buf <= 64);}
 
 static inline void dtls_sess_set_state(dtls_sess* sess, enum dtls_con_state state)
 {sess->state = state;}

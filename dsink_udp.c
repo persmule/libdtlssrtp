@@ -18,6 +18,7 @@ static DSINK_SENDTO(udp_sendto)
 static const dsink dsink_udp = {
   "dsink_udp",
   udp_sendto,
+  NULL,
 };
 
 const dsink* dsink_udp_getsink(void)

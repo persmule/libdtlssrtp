@@ -157,7 +157,7 @@ ptrdiff_t dtls_sess_send_pending(
 				 )
 {
   if(sess->ssl == NULL){
-    return -1;
+    return -2;
   }
   BIO* wbio = dtls_sess_get_wbio(sess);
   size_t pending = BIO_ctrl_pending(wbio);
@@ -166,6 +166,12 @@ ptrdiff_t dtls_sess_send_pending(
   if(pending > 0) {
     char outgoing[pending];
     out = BIO_read(wbio, outgoing, pending);
+    if(sess->sink->sched != NULL){
+      struct timeval tv = {0, 0};
+      if(dtls_sess_get_timeout(sess, &tv)){
+	sess->sink->sched(carrier, &tv);
+      }
+    }
     ret = sess->sink->sendto(carrier, outgoing, out, 0, dest, destlen);
   }
   return ret;
@@ -238,21 +244,20 @@ ptrdiff_t dtls_do_handshake(
   return ret;
 }
 
-long dtls_sess_handle_timeout(
-			      dtls_sess* sess,
-			      void* carrier,
-			      const void* dest,
-			      int destlen
-			      )
+ptrdiff_t dtls_sess_handle_timeout(
+				   dtls_sess* sess,
+				   void* carrier,
+				   const void* dest,
+				   int destlen
+				   )
 {
-  struct timeval timeout;
-  DTLSv1_handle_timeout(sess->ssl);
-  dtls_sess_send_pending(sess, carrier, dest, destlen);
-  if(!DTLSv1_get_timeout(sess->ssl, &timeout)) {
-    return 0;
+  if(!SSL_is_init_finished(sess->ssl)){
+    DTLSv1_handle_timeout(sess->ssl);
   }
-  return timeout.tv_sec * 1000 + timeout.tv_usec / 1000;
+  return dtls_sess_send_pending(sess, carrier, dest, destlen);
 }
+
+
 
 
 void dtls_sess_setup(dtls_sess* sess)
