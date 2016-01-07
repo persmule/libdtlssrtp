@@ -23,7 +23,9 @@ typedef DSINK_SENDTO(dsink_sendto);
    * Used to schedule timeout handling,
    * timer functionality is supposed to
    * implemented optionally within *carrier, 
-   * with scheduling state stored.
+   * with scheduling state stored, tv could
+   * be NULL to indicate NO new timeout 
+   * handling is scheduled.
    */ 
 #define DSINK_TIMER_SCHED(x)			\
   void (x)(void* carrier,			\

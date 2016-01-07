@@ -168,9 +168,8 @@ ptrdiff_t dtls_sess_send_pending(
     out = BIO_read(wbio, outgoing, pending);
     if(sess->sink->sched != NULL){
       struct timeval tv = {0, 0};
-      if(dtls_sess_get_timeout(sess, &tv)){
-	sess->sink->sched(carrier, &tv);
-      }
+      sess->sink->sched(carrier,
+			dtls_sess_get_timeout(sess, &tv)?&tv:NULL);
     }
     ret = sess->sink->sendto(carrier, outgoing, out, 0, dest, destlen);
   }
