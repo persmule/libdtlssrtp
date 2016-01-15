@@ -233,8 +233,8 @@ ptrdiff_t dtls_do_handshake(
    * with the handshake we receive from the remote side.
    */
   if(sess->ssl == NULL
-     || dtls_sess_get_state(sess) != DTLS_CONSTATE_ACT
-     || dtls_sess_get_state(sess) != DTLS_CONSTATE_ACTPASS){
+     || (dtls_sess_get_state(sess) != DTLS_CONSTATE_ACT
+	 && dtls_sess_get_state(sess) != DTLS_CONSTATE_ACTPASS)){
     return 0;
   }
   if(dtls_sess_get_state(sess) == DTLS_CONSTATE_ACTPASS){
