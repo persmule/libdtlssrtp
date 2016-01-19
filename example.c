@@ -70,10 +70,10 @@ int fprinthex(FILE* fp, const char* prefix, const void* b, size_t l)
 int fprintkeymat(FILE* fp, const srtp_key_ptrs* ptrs)
 {
   return fputs("********\n", fp)
-    + fprinthex(fp, "localkey", ptrs->localkey, SRTP_MASTER_KEY_LEN)
-    + fprinthex(fp, "remotekey", ptrs->remotekey, SRTP_MASTER_KEY_LEN)
-    + fprinthex(fp, "localsalt", ptrs->localsalt, SRTP_MASTER_SALT_LEN)
-    + fprinthex(fp, "remotesalt", ptrs->remotesalt, SRTP_MASTER_SALT_LEN)
+    + fprinthex(fp, "localkey", ptrs->localkey, MASTER_KEY_LEN)
+    + fprinthex(fp, "remotekey", ptrs->remotekey, MASTER_KEY_LEN)
+    + fprinthex(fp, "localsalt", ptrs->localsalt, MASTER_SALT_LEN)
+    + fprinthex(fp, "remotesalt", ptrs->remotesalt, MASTER_SALT_LEN)
     + fputs("********\n", fp);
 }
 

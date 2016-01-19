@@ -11,12 +11,10 @@
 
 #include <assert.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 // for mutex
 #include <pthread.h>
-
-//for srtp
-#include <srtp/srtp.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -164,10 +162,11 @@ static inline BIO* dtls_sess_get_rbio(dtls_sess* sess)
 static inline BIO* dtls_sess_get_wbio(dtls_sess* sess)
 {return SSL_get_wbio(sess->ssl);}
 
-#define SRTP_MASTER_SALT_LEN 14
+#define MASTER_KEY_LEN 16
+#define MASTER_SALT_LEN 14
 
 typedef struct srtp_key_material{
-  uint8_t material[(SRTP_MASTER_KEY_LEN + SRTP_MASTER_SALT_LEN) * 2];
+  uint8_t material[(MASTER_KEY_LEN + MASTER_SALT_LEN) * 2];
   enum dtls_con_state ispassive;
 }srtp_key_material;
 
@@ -187,14 +186,14 @@ static inline void srtp_key_material_extract
 {
   if(km->ispassive == DTLS_CONSTATE_ACT){
     ptrs->localkey = (km->material);
-    ptrs->remotekey = ptrs->localkey + SRTP_MASTER_KEY_LEN;
-    ptrs->localsalt = ptrs->remotekey + SRTP_MASTER_KEY_LEN;
-    ptrs->remotesalt = ptrs->localsalt + SRTP_MASTER_SALT_LEN;
+    ptrs->remotekey = ptrs->localkey + MASTER_KEY_LEN;
+    ptrs->localsalt = ptrs->remotekey + MASTER_KEY_LEN;
+    ptrs->remotesalt = ptrs->localsalt + MASTER_SALT_LEN;
   }else{
     ptrs->remotekey = (km->material);
-    ptrs->localkey = ptrs->remotekey + SRTP_MASTER_KEY_LEN;
-    ptrs->remotesalt = ptrs->localkey + SRTP_MASTER_KEY_LEN;
-    ptrs->localsalt = ptrs->remotesalt + SRTP_MASTER_SALT_LEN;
+    ptrs->localkey = ptrs->remotekey + MASTER_KEY_LEN;
+    ptrs->remotesalt = ptrs->localkey + MASTER_KEY_LEN;
+    ptrs->localsalt = ptrs->remotesalt + MASTER_SALT_LEN;
   }
 }
 
