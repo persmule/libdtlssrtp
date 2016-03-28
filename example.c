@@ -1,3 +1,20 @@
+/* Copyright (C) Richfit Information Technology Co.Ltd.
+   Contributed by Xie Tianming <persmule@gmail.com>, 2015.
+
+   The DTLS-SRTP library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
+
+   The DTLS-SRTP library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with the DTLS-SRTP library; if not, see
+   <http://www.gnu.org/licenses/>.  */
+
 #include <arpa/inet.h>
 #include <sys/select.h>
 #include <signal.h>
@@ -18,8 +35,10 @@ const char usage_format[] =
   "        -s        server mode\n"
   "        -p:       local port to bind\n";
 
+//option string used by getopt(3).
 const char optstr[] = "svb:c:k:h:p:";
 
+//recommended cipher suites.
 const char cipherlist[] =
   "ECDHE-RSA-AES128-GCM-SHA256:"
   "ECDHE-ECDSA-AES128-GCM-SHA256:"
@@ -41,12 +60,18 @@ const char cipherlist[] =
   "DHE-RSA-AES256-SHA:"
   "!aNULL:!eNULL:!EXPORT:!DSS:!DES:!RC4:!3DES:!MD5:!PSK";
 
+/*
+ * They need addresses used by functions below, so they are not
+ * defined as macros.
+ */
 const int on = 1, off = 0;
 
 static int exitflag = 0;
 
+//default timeout interval.
 static const struct timeval timeout = {5, 0};
 
+//callback used by signal(2)
 static void setexit(int sig)
 {
   if(sig == SIGINT){
@@ -54,6 +79,8 @@ static void setexit(int sig)
   }
 }
 
+
+//function to print binary blobs as comma-separated hexadecimals.
 int fprinthex(FILE* fp, const char* prefix, const void* b, size_t l)
 {
   int totallen = 0;
@@ -67,6 +94,7 @@ int fprinthex(FILE* fp, const char* prefix, const void* b, size_t l)
   return totallen;
 }
 
+//function to specifically print content srtp_key_ptrs objects.
 int fprintkeymat(FILE* fp, const srtp_key_ptrs* ptrs)
 {
   return fputs("********\n", fp)
@@ -77,6 +105,7 @@ int fprintkeymat(FILE* fp, const srtp_key_ptrs* ptrs)
     + fputs("********\n", fp);
 }
 
+//function to specifically print fingerprint of X509 objects.
 int fprintfinger(FILE* fp, const char* prefix, const X509* cert)
 {
   unsigned char fingerprint[EVP_MAX_MD_SIZE];
@@ -148,12 +177,18 @@ int handle_socket_error(void) {
   return 0;
 }
 
+
+//class to represent ip address in a unified way.
 typedef union usockaddr {
   struct sockaddr_storage ss;
   struct sockaddr_in6 s6;
   struct sockaddr_in s4;
 }uaddr;
 
+/*
+ * function to convert ip address represent with strings to 
+ * uaddr objects.
+ */
 bool makesockaddr(const char* straddr, in_port_t port, uaddr* addr)
 {
   if((straddr == NULL) || (strlen(straddr) == 0)){
@@ -312,6 +347,7 @@ int mainloop(
 
 int main(int argc, char** argv)
 {
+  //The library depends on OpenSSL, which must be initialized first.
   if(!dtls_init_openssl()){
     fputs("Openssl initialization failed! quitting.\n", stderr);
     return EXIT_FAILURE;
